@@ -92,12 +92,13 @@ fn consumer_routine<const BOUND: usize>(sbbuf: Arc<SyncedBoundedBuffer<BOUND>>) 
 }
 
 fn main() {
+    const INVALID_ARGS_MSG: &str = "Invalid arguments. Correct usage: `rpc <n_producers> <n_consumers>`";
     const BUF_SIZE: usize = 30; // arbitary choice
 
     let mut args = env::args();
     args.next(); // ignore program name
-    let n_producers = args.next().expect("missing argument: n_producers").parse::<usize>().unwrap();
-    let n_consumers = args.next().expect("missing argument: n_consumers").parse::<usize>().unwrap();
+    let n_producers = args.next().expect(INVALID_ARGS_MSG).parse::<usize>().expect(INVALID_ARGS_MSG);
+    let n_consumers = args.next().expect(INVALID_ARGS_MSG).parse::<usize>().expect(INVALID_ARGS_MSG);
 
     let mut producers = Vec::with_capacity(n_producers);
     let mut consumers = Vec::with_capacity(n_consumers);
