@@ -2,6 +2,7 @@ use std::{
     sync::{Mutex, Condvar, Arc},
     env,
     thread,
+    fmt::{self, Display},
 };
 
 struct BoundedBuffer<const BOUND: usize> {
@@ -29,6 +30,19 @@ impl<const BOUND: usize> BoundedBuffer<BOUND> {
 impl<const BOUND: usize> Default for BoundedBuffer<BOUND> {
     fn default() -> Self { Self::new() }
 }
+impl<const BOUND: usize> Display for BoundedBuffer<BOUND> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+        write!(f, "[")?;
+
+        if self.n_items > 0 {
+            write!(f, "{}", self.array[0])?;
+            for i in 1..self.n_items { write!(f, ", {}", self.array[i])?; };
+        };
+
+        write!(f, "]")
+    }
+}
 
 #[derive(Default)]
 struct SyncedBoundedBuffer<const BOUND: usize> {
@@ -53,6 +67,8 @@ fn producer_routine<const BOUND: usize>(sbbuf: Arc<SyncedBoundedBuffer<BOUND>>, 
 
         // add an item to the buffer
         bbuf.push(item);
+        // display the buffer state
+        println!("{}", bbuf);
 
         // we're done; now the MutexGuard goes out of scope, unlocking the Mutex
     }
@@ -64,6 +80,7 @@ fn consumer_routine<const BOUND: usize>(sbbuf: Arc<SyncedBoundedBuffer<BOUND>>) 
         let mut bbuf = sbbuf.buffer.lock().unwrap();
         while bbuf.empty() { bbuf = sbbuf.not_empty.wait(bbuf).unwrap(); }
         bbuf.pop();
+        println!("{}", bbuf);
     }
 }
 
@@ -71,8 +88,9 @@ fn main() {
     const BUF_SIZE: usize = 30; // arbitary choice
 
     let mut args = env::args();
-    let n_producers = args.next().unwrap().parse::<usize>().unwrap();
-    let n_consumers = args.next().unwrap().parse::<usize>().unwrap();
+    args.next(); // ignore program name
+    let n_producers = args.next().expect("missing argument: n_producers").parse::<usize>().unwrap();
+    let n_consumers = args.next().expect("missing argument: n_consumers").parse::<usize>().unwrap();
 
     let mut producers = Vec::with_capacity(n_producers);
     let mut consumers = Vec::with_capacity(n_consumers);
