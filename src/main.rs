@@ -70,6 +70,10 @@ fn producer_routine<const BOUND: usize>(sbbuf: Arc<SyncedBoundedBuffer<BOUND>>, 
         // display the buffer state
         println!("{}", bbuf);
 
+        // since we just pushed an item, the buffer is definitely not empty.
+        // We use `notify_all` instead of `notify_one` because there may be space for multiple items, which
+        // may be filled by multiple threads.
+        sbbuf.not_empty.notify_all();
         // we're done; now the MutexGuard goes out of scope, unlocking the Mutex
     }
 }
@@ -79,8 +83,11 @@ fn consumer_routine<const BOUND: usize>(sbbuf: Arc<SyncedBoundedBuffer<BOUND>>) 
     loop {
         let mut bbuf = sbbuf.buffer.lock().unwrap();
         while bbuf.empty() { bbuf = sbbuf.not_empty.wait(bbuf).unwrap(); }
+
         bbuf.pop();
         println!("{}", bbuf);
+
+        sbbuf.not_full.notify_all();
     }
 }
 
